@@ -2,13 +2,14 @@ use std::fs::File;
 use std::env;
 use std::process;
 
-
 use grep_regex::RegexMatcher;
+use grep_matcher::Matcher;
 use grep_searcher::Searcher;
 use grep_searcher::sinks::UTF8;
 
 use anyhow::Result;
 use futures::future::join_all;
+use colored::Colorize;
 
 
 #[tokio::main]
@@ -18,7 +19,7 @@ async fn main() -> Result<()> {
 
     // Check that we have at least one file path
     if args.len() < 2 {
-        eprintln!("Usage: zstd_gzip <regex> <file1> <file2> ...");
+        eprintln!("Usage: rzstd <regex> <file1> <file2> ...");
         process::exit(1);
     }
 
@@ -100,10 +101,21 @@ async fn process_file(file_path: &str, regex: &str) -> Result<()> {
     };
 
     match Searcher::new().search_reader(&matcher, decoder, UTF8(|_lnum, line| {
+        // Color the matched string to red.
+        let matched_str = match matcher.find(line.as_bytes()) {
+            Ok(matched_str) => matched_str,
+            Err(_) => return Ok(true), // Return true in the lambda function to continue searching
+        };
+        let matched_str = match matched_str {
+            Some(matched_str) => matched_str,
+            None => return Ok(true), // Return true in the lambda function to continue searching
+        };
+        let colored_line = line.replace(&line[matched_str], &line[matched_str].red().to_string());
+
         // Print the line to stdout
         // Here we use print!() instead of println!() because
         // each line already has a newline character at the end.
-        print!("{}", line);
+        print!("{}", colored_line);
         Ok(true) // Return true in the lambda function to continue searching
     })){
         Ok(_) => (),
