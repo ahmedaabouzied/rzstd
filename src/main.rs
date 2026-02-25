@@ -44,18 +44,25 @@ async fn main() -> Result<()> {
         // Spawn a task to process the file
         let handle = tokio::spawn(async move {
             let path_str = file_path.to_string_lossy().to_string();
-            process_file(&path_str, &regex).await
+            let lines = process_file(&path_str, &regex).await?;
+            Ok::<_, anyhow::Error>((path_str, lines))
         });
         handles.push(handle);
     }
+
+    let show_filename = files.len() > 1;
 
     // Join all tasks, then print results sequentially to avoid interleaving
     let results = join_all(handles).await;
     for result in results {
         match result {
-            Ok(Ok(lines)) => {
+            Ok(Ok((path, lines))) => {
                 for line in lines {
-                    print!("{}", line);
+                    if show_filename {
+                        print!("{}:{}", path.magenta(), line);
+                    } else {
+                        print!("{}", line);
+                    }
                 }
             }
             Ok(Err(e)) => {
