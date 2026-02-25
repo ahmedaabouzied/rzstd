@@ -41,33 +41,42 @@ async fn main() -> Result<()> {
         let regex = regex.clone(); // Clone regex for each task
         let file_path = file_path.clone(); // Clone file_path for each
 
-        // Spawn a task to process for the file
+        // Spawn a task to process the file
         let handle = tokio::spawn(async move {
             let path_str = file_path.to_string_lossy().to_string();
-            match process_file(&path_str, &regex).await {
-                Ok(_) => (),
-                Err(e) => {
-                    eprintln!("Error processing file {}: {}", path_str, e);
-                    process::exit(1);
-                }
-            }
+            process_file(&path_str, &regex).await
         });
-        // Add the task to the vector of tasks
         handles.push(handle);
     }
 
-    // Join all the tasks and wait for them all to complete
-    let _ = join_all(handles).await;
-
+    // Join all tasks, then print results sequentially to avoid interleaving
+    let results = join_all(handles).await;
+    for result in results {
+        match result {
+            Ok(Ok(lines)) => {
+                for line in lines {
+                    print!("{}", line);
+                }
+            }
+            Ok(Err(e)) => {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+            Err(e) => {
+                eprintln!("Task failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
 
     Ok(())
 }
 
-/// Processes a single file. 
-/// It will stream the file into a decoder and stream the 
+/// Processes a single file.
+/// It will stream the file into a decoder and stream the
 /// decoded data into a searcher. The searcher will then
-/// perform a regext "grep" and print the results to stdout.
-async fn process_file(file_path: &str, regex: &str) -> Result<()> {
+/// perform a regex grep and return the matching lines.
+async fn process_file(file_path: &str, regex: &str) -> Result<Vec<String>> {
     let file = match File::open(file_path){
         Ok(file) => file,
         Err(e) => {
@@ -79,7 +88,7 @@ async fn process_file(file_path: &str, regex: &str) -> Result<()> {
 
     if file.metadata()?.len() == 0 {
         // File is empty, nothing to do
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     if file.metadata()?.file_type().is_dir() {
@@ -110,23 +119,21 @@ async fn process_file(file_path: &str, regex: &str) -> Result<()> {
         }
     };
 
+    let mut lines = Vec::new();
+
     match Searcher::new().search_reader(&matcher, decoder, UTF8(|_lnum, line| {
         // Color the matched string to red.
         let matched_str = match matcher.find(line.as_bytes()) {
             Ok(matched_str) => matched_str,
-            Err(_) => return Ok(true), // Return true in the lambda function to continue searching
+            Err(_) => return Ok(true),
         };
         let matched_str = match matched_str {
             Some(matched_str) => matched_str,
-            None => return Ok(true), // Return true in the lambda function to continue searching
+            None => return Ok(true),
         };
         let colored_line = line.replace(&line[matched_str], &line[matched_str].red().to_string());
-
-        // Print the line to stdout
-        // Here we use print!() instead of println!() because
-        // each line already has a newline character at the end.
-        print!("{}", colored_line);
-        Ok(true) // Return true in the lambda function to continue searching
+        lines.push(colored_line);
+        Ok(true)
     })){
         Ok(_) => (),
         Err(e) => {
@@ -135,5 +142,5 @@ async fn process_file(file_path: &str, regex: &str) -> Result<()> {
         }
     };
 
-    Ok(())
+    Ok(lines)
 }
