@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::env;
+use std::path::PathBuf;
 use std::process;
 
 use grep_regex::RegexMatcher;
@@ -8,36 +8,46 @@ use grep_searcher::Searcher;
 use grep_searcher::sinks::UTF8;
 
 use anyhow::Result;
+use clap::Parser;
 use futures::future::join_all;
 use colored::Colorize;
 
+/// Grep through zstd-compressed files in parallel.
+///
+/// rzstd decompresses each file concurrently and searches for lines
+/// matching the given regex pattern, like `zstdgrep` but parallel.
+#[derive(Parser)]
+#[command(version, name = "rzstd")]
+#[command(after_help = "Examples:\n  rzstd 'ERROR' server.log.zst\n  rzstd 'ID = 1' file1.zst file2.zst file3.zst")]
+struct Cli {
+    /// Regex pattern to search for
+    pattern: String,
+
+    /// One or more zstd-compressed files to search
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Collect file paths from command line arguments
-    let args: Vec<String> = env::args().collect();
+    let cli = Cli::parse();
 
-    // Check that we have at least one file path
-    if args.len() < 2 {
-        eprintln!("Usage: rzstd <regex> <file1> <file2> ...");
-        process::exit(1);
-    }
-
-    let regex = &args[1];
-    let files = &args[2..];
+    let regex = &cli.pattern;
+    let files = &cli.files;
 
     // handles is a vector of futures that will be executed concurrently
     let mut handles = Vec::new();
     for file_path in files {
         let regex = regex.clone(); // Clone regex for each task
         let file_path = file_path.clone(); // Clone file_path for each
-                                           
+
         // Spawn a task to process for the file
         let handle = tokio::spawn(async move {
-            match process_file(&file_path, &regex).await {
+            let path_str = file_path.to_string_lossy().to_string();
+            match process_file(&path_str, &regex).await {
                 Ok(_) => (),
                 Err(e) => {
-                    eprintln!("Error processing file {}: {}", file_path, e);
+                    eprintln!("Error processing file {}: {}", path_str, e);
                     process::exit(1);
                 }
             }

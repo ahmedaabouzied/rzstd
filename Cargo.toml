@@ -13,6 +13,7 @@ grep-matcher = "0.1.7"
 grep-regex = "0.1.12"
 grep-searcher = "0.1.13"
 anyhow = "1.0.76"
+clap = { version = "4", features = ["derive"] }
 futures = "0.3.29"
 colored = "2.0"
 
