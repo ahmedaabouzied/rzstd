@@ -93,20 +93,14 @@ async fn process_file(file_path: &str, regex: &str) -> Result<Vec<String>> {
     
     };
 
-    if file.metadata()?.len() == 0 {
-        // File is empty, nothing to do
+    let metadata = file.metadata()?;
+
+    if metadata.len() == 0 {
         return Ok(Vec::new());
     }
 
-    if file.metadata()?.file_type().is_dir() {
-        // File is a directory, nothing to do
+    if metadata.file_type().is_dir() {
         return Err(anyhow::anyhow!("{} is a directory", file_path));
-    }
-
-    if file.metadata()?.file_type().is_symlink() {
-        // File is a symlink, nothing to do
-        // we don't follow symlinks
-        return Err(anyhow::anyhow!("{} is a symlink", file_path));
     }
 
     // Read zstd encoded data from stdin and decode

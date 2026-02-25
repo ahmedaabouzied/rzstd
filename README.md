@@ -9,13 +9,13 @@ The problem this tries to solve is that `zstdgrep` processes files sequentially.
 ## Usage
 
 ```sh
-rzst <regex> <file1> <file2> <file3>
+rzstd <regex> <file1> <file2> <file3>
 ```
 
 ## Example
 
 ```
-rzst 'ID = 1' ./file1.zst ./file2.zst ./file3.zst
+rzstd 'ID = 1' ./file1.zst ./file2.zst ./file3.zst
 ```
 
 ## Building
@@ -28,5 +28,5 @@ cargo build
 
 ### Release build:
 ```
-cargo build --Release
+cargo build --release
 ```
