@@ -103,8 +103,8 @@ async fn process_file(file_path: &str, regex: &str) -> Result<Vec<String>> {
         return Err(anyhow::anyhow!("{} is a directory", file_path));
     }
 
-    // Read zstd encoded data from stdin and decode
-    let decoder = match zstd::stream::read::Decoder::new(file){
+    // Decode the zstd stream with the pure-Rust ruzstd decoder.
+    let decoder = match ruzstd::StreamingDecoder::new(file){
         Ok(decoder) => decoder,
         Err(e) => {
             let e = anyhow::anyhow!("Error creating decoder for file {}: {}", file_path, e);

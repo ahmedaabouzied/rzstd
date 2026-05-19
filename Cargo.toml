@@ -7,8 +7,9 @@ edition = "2021"
 
 [dependencies]
 tokio = {version = "1.35.1", features = ["full"]}
-# async-compression = { version = "0.4.5", features = ["tokio", "zstd"] }
-zstd = "0.13.0"
+# Pure-Rust zstd decoder: no C toolchain needed, so the binary
+# cross-compiles to Linux from any host with just `cargo build`.
+ruzstd = "0.7"
 grep-matcher = "0.1.7"
 grep-regex = "0.1.12"
 grep-searcher = "0.1.13"
@@ -16,6 +17,3 @@ anyhow = "1.0.76"
 clap = { version = "4", features = ["derive"] }
 futures = "0.3.29"
 colored = "2.0"
-
-[target.x86_64-unknown-linux-gnu]
-linker = "x86_64-linux-gnu-gcc"

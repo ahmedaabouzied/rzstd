@@ -30,3 +30,21 @@ cargo build
 ```
 cargo build --release
 ```
+
+### Cross-compiling for Linux x86_64
+
+`rzstd` has no C dependencies (zstd decoding is pure Rust via `ruzstd`), so a
+fully static Linux binary can be built from any host — no Docker, gcc, clang,
+or zig required:
+
+```sh
+# One-time: install the target and expose Rust's bundled linker on PATH
+rustup target add x86_64-unknown-linux-musl
+ln -sf "$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's/host: //p')/bin/rust-lld" ~/.cargo/bin/rust-lld
+
+cargo build --release --target x86_64-unknown-linux-musl
+```
+
+The resulting `target/x86_64-unknown-linux-musl/release/rzstd` is a static
+binary that runs on any Linux x86_64 machine. Linker settings live in
+`.cargo/config.toml`.
